@@ -61,6 +61,21 @@ class FileObserver:
         elif file.new_path != file.old_path:
             self.rename_file(file.old_path, file.new_path)
 
+
+class Mistake:
+    """
+    Structure to store data for analysis
+    """
+    commit_hash = ""
+    author = ""
+    nth_mistakes = 0
+
+    def __init__(self, commit_hash, author, nth_mistakes):
+        self.commit_hash = commit_hash
+        self.author = author
+        self.nth_mistakes = nth_mistakes
+
+
 def main():
     """
     Точка входа
