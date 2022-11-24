@@ -71,15 +71,15 @@ class Mistake:
     """
     commit_hash = ""
     author = ""
-    nth_mistakes = 0
+    nth_commit = 0
 
     def __init__(self, commit_hash, author, nth_mistakes):
         self.commit_hash = commit_hash
         self.author = author
-        self.nth_mistakes = nth_mistakes
+        self.nth_commit = nth_mistakes
 
     def increment(self):
-        self.nth_mistakes += 1
+        self.nth_commit += 1
 
 
 class MistakeTracker:
