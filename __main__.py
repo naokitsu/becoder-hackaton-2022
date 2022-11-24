@@ -1,15 +1,53 @@
-import sys
-
 from pydriller import Repository, Git, Commit
 
+class FileObserver:
+    """
+    Class that track filename changes and hold their **current** ids
+    """
+    _dictionary = {}
+    _free_id = 0
 
-def increment_commit_count(gr_commit: Commit, email_files: {str, dict}, element):
-    if not (gr_commit.author.name in email_files):
-        email_files[gr_commit.author.name] = {}
-    for files in gr_commit.modified_files:
-        if not (files.new_path in email_files[gr_commit.author.name]):
-            email_files[gr_commit.author.name][files.new_path] = [0, 0, gr_commit.hash]
-        email_files[gr_commit.author.name][files.new_path][element] += 1
+    def _get_free_id(self):
+        """
+        Get free id for new file
+        :return: Free id
+        """
+        self._free_id += 1
+        return self._free_id
+
+    def _add_file(self, name: str, file_id: int):
+        """
+        Add new entry in dictionary
+        :param name: File name
+        :param file_id: File id
+        """
+        if name in self._dictionary:
+            print(f"File {name} exists")
+            raise f"Error"
+        self._dictionary[name] = id
+
+    def register_new_file(self, name: str):
+        """
+        Create new file with free id
+        :param name: File name
+        """
+        self._add_file(name, self._get_free_id())
+
+    def rename_file(self, old_name: str, new_name: str):
+        """
+        Rename file
+        :param old_name: Old file name
+        :param new_name: New File name
+        """
+        self._add_file(new_name, self._dictionary[old_name])
+        self.remove_file(old_name)
+
+    def remove_file(self, name: str):
+        """
+        Stop to track file
+        :param name: File name
+        """
+        self._dictionary.pop(name)
 
 def main():
     """
@@ -21,27 +59,8 @@ def main():
         return
     """
     gr = Git("/home/narinai/Downloads/memos")
+    tmp = Repository('/home/narinai/Downloads/memos')
 
-    # dict {name: str, dict {file: str, [errors: int, total: int] } }
-    email_files = {}
-
-    for commit in Repository('/home/narinai/Downloads/memos').traverse_commits():
-        gr_commit = gr.get_commit(commit.hash)
-        increment_commit_count(gr_commit, email_files, 1)
-
-        if not ("fix" in commit.msg):
-            continue
-
-        for fixed_file in commit.modified_files:
-            buggy_commits = gr.get_commits_last_modified_lines(gr_commit, fixed_file)
-            for buggy_commit in buggy_commits:
-                for i in buggy_commits[buggy_commit]:
-                    increment_commit_count(gr.get_commit(i), email_files, 0)
-
-    for user in email_files:
-        print(f"\nCommits by {user} that were fixed:")
-        for file in email_files[user]:
-            print(f"{email_files[user][file]} \t {email_files[user][file][0] > email_files[user][file][1]} \t\t\t {file}")
 
 
 if __name__ == '__main__':
