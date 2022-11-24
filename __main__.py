@@ -40,6 +40,9 @@ class FileObserver:
         :param old_name: Old file name
         :param new_name: New File name
         """
+        if old_name not in self._dictionary:
+            self.register_new_file(new_name)
+            return
         self._add_file(new_name, self._dictionary[old_name])
         self.remove_file(old_name)
 
@@ -108,9 +111,12 @@ def main():
     gr = Git("/home/narinai/Downloads/memos")
     repo = Repository('/home/narinai/Downloads/memos')
     file_observer = FileObserver()
-    for commits in repo.traverse_commits():
-        for file in commits.modified_files:
+    for commit in repo.traverse_commits():
+        for file in commit.modified_files:
             file_observer.check_states(file)
+            print(gr.get_commits_last_modified_lines(commit, file))
+
+
 
 
 if __name__ == '__main__':
