@@ -75,6 +75,26 @@ class Mistake:
         self.author = author
         self.nth_mistakes = nth_mistakes
 
+    def increment(self):
+        self.nth_mistakes += 1
+
+
+class MistakeTracker:
+    """
+    Class that tracks user mistakes per file
+    """
+    _dictionary = None
+
+    def __init__(self):
+        self._dictionary = {}
+
+    def new_mistake(self, commit_hash: str, username: str, file_id: int):
+        if username not in self._dictionary:
+            self._dictionary[username] = {}
+        if file_id not in self._dictionary[username]:
+            self._dictionary[username][file_id] = Mistake(commit_hash, username, 0)
+        self._dictionary[username][file_id].increment()
+
 
 def main():
     """
@@ -91,9 +111,6 @@ def main():
     for commits in repo.traverse_commits():
         for file in commits.modified_files:
             file_observer.check_states(file)
-
-
-
 
 
 if __name__ == '__main__':
