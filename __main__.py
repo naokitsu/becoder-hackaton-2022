@@ -99,6 +99,25 @@ class MistakeTracker:
         self._dictionary[username][file_id].increment()
 
 
+def get_latest_commit(gr: Git, commits: dict):
+    """
+    Get the latest commit from the list
+    :param gr: Git wrapper
+    :param commits: {'file': {'commit_hash', ... }}-like dictionary (output of get_commits_last_modified_lines)
+    :return: latest commit from the list
+    """
+    # {'web/src/less/memo-editor.less': {'06f5a5788ed9e86edf5e2a4c4d418c1741c0a17d', ... }}
+    latest_commit = None
+    latest_date = None
+    for i in commits:
+        for j in commits[i]:
+            commit = gr.get_commit(j)
+            if latest_date is None or commit.committer_date > latest_date:
+                latest_date = commit.committer_date
+                latest_commit = j
+    return latest_commit
+
+
 def main():
     """
     Точка входа
@@ -114,8 +133,7 @@ def main():
     for commit in repo.traverse_commits():
         for file in commit.modified_files:
             file_observer.check_states(file)
-            print(gr.get_commits_last_modified_lines(commit, file))
-
+            latest_commit_hash = get_latest_commit(gr, gr.get_commits_last_modified_lines(commit, file))
 
 
 
