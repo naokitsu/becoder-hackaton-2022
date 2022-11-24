@@ -1,4 +1,5 @@
-from pydriller import Repository, Git, Commit
+from pydriller import Repository, Git, Commit, ModifiedFile
+
 
 class FileObserver:
     """
@@ -49,6 +50,17 @@ class FileObserver:
         """
         self._dictionary.pop(name)
 
+    def get_id(self, name: str):
+        return self._dictionary[name]
+
+    def check_states(self, file: ModifiedFile):
+        if file.old_path is None:
+            self.register_new_file(file.new_path)
+        elif file.new_path is None:
+            self.remove_file(file.old_path)
+        elif file.new_path != file.old_path:
+            self.rename_file(file.old_path, file.new_path)
+
 def main():
     """
     Точка входа
@@ -59,7 +71,13 @@ def main():
         return
     """
     gr = Git("/home/narinai/Downloads/memos")
-    tmp = Repository('/home/narinai/Downloads/memos')
+    repo = Repository('/home/narinai/Downloads/memos')
+    file_observer = FileObserver()
+    for commits in repo.traverse_commits():
+        for file in commits.modified_files:
+            file_observer.check_states(file)
+
+
 
 
 
