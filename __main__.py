@@ -83,8 +83,7 @@ class Footprint:
         self.commits = commits
 
     def print(self):
-        if self.commits != 0:
-            print(f"{self.commits/self.mistakes * 100} \t {self.author} \t {self.file} \t {self.mistakes} \t {self.commits}")
+        print(f"{self.author} \t {self.file} \t {self.mistakes} \t {self.commits}")
 
 class FileTracker:
     """
@@ -149,8 +148,8 @@ def main():
         print("Передайте репозиторий первым аргументом")
         return
     """
-    gr = Git("C:\\Users\\Admin\\memos")
-    repo = Repository('C:\\Users\\Admin\\memos')
+    gr = Git("/home/narinai/Documents/angular/knockout")
+    repo = Repository('/home/narinai/Documents/angular/knockout')
     file_observer = FileObserver()
     file_tracker = FileTracker()
     prints = []
