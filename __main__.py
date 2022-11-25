@@ -1,3 +1,6 @@
+import os
+import sys
+
 from pydriller import Repository, Git, Commit, ModifiedFile
 import matplotlib.pyplot as plt
 
@@ -139,17 +142,16 @@ def get_latest_commit(gr: Git, commits: dict):
     return latest_commit
 
 
-def main():
+def main(repo_str: str):
     """
     Точка входа
     """
-    """
-    if len(sys.argv) != 2:
-        print("Передайте репозиторий первым аргументом")
-        return
-    """
-    gr = Git("/home/narinai/Documents/angular/knockout")
-    repo = Repository('/home/narinai/Documents/angular/knockout')
+    if repo_str.startswith("https://") or repo_str.startswith("git@github.com"):
+        os.system(f"git clone {repo_str} cloned_repo")
+        repo_str = "./cloned_repo"
+
+    gr = Git(repo_str)
+    repo = Repository(repo_str)
     file_observer = FileObserver()
     file_tracker = FileTracker()
     prints = []
@@ -182,5 +184,12 @@ def main():
     #plt.axis([0, 6, 0, 20])
     plt.show()
 
+
 if __name__ == '__main__':
-    main()
+    path = ""
+    if len(sys.argv) != 2:
+        print("Репозиторий не был передан первым аргументом, введите вручную:")
+        path = input()
+    else:
+        path = sys.argv[1]
+    main(path)
