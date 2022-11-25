@@ -271,7 +271,9 @@ def main(repo_str: str):
     df_slice_est = df_final.loc[df_final['Автор'] == selected_est]
     df_slice_est = df_slice_est.loc[df_slice_est["Номера файлов"] == data_observer.get_id(commited_file_path)]
     error_chance = 0
-    st.write(f"Вероятность ошибки в файле {df_slice_est}%")
+    column = df_slice_est['Частота ошибки']
+    st.text(f"Вероятность ошибки в файле {column.iat[0]*100}%")
+
 
 
 if __name__ == '__main__':
