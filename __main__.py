@@ -352,11 +352,11 @@ def main(repo_str: str):
     all_authors_finals = set(df_final["Автор"])
     selected_est = st.selectbox("Автор", all_authors_finals, key=22)
     commited_file_path = st.text_input(label="Путь до файла")
-    df_slice_est = df_final.loc[df_final['Автор'] == selected_est]
-    df_slice_est = df_slice_est.loc[df_slice_est["Номера файлов"] == data_observer.get_id(commited_file_path)]
-    error_chance = 0
-    column = df_slice_est['Частота ошибки']
-    st.text(f"Вероятность ошибки в файле {column.iat[0]*100}%")
+    if commited_file_path is not None:
+        df_slice_est = df_final.loc[df_final['Автор'] == selected_est]
+        df_slice_est = df_slice_est.loc[df_slice_est["Номера файлов"] == data_observer.get_id(commited_file_path)]
+        column = df_slice_est['Частота ошибки']
+        st.text(f"Вероятность ошибки в файле {column.iat[0]*100}%")
 
 
 if __name__ == '__main__':
