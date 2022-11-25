@@ -10,12 +10,14 @@ import pandas as pd
 import streamlit as st
 from pandas import DataFrame
 
-from pydriller import Repository, Git, Commit, ModifiedFile
-import matplotlib.pyplot as plt
+from pydriller import Repository, Git, ModifiedFile
+
 
 class FileObserver:
     """
     Class that track filename changes and hold their **current** ids
+
+    Класс, который отслеживает изменения имен файлов и хранит их **текущие** идентификаторы.
     """
     _dictionary = {}
     _free_id = 0
@@ -23,6 +25,8 @@ class FileObserver:
     def _get_free_id(self):
         """
         Get free id for new file
+
+        Получить свободный идентификатор для нового файла
         :return: Free id
         """
         self._free_id += 1
@@ -31,6 +35,8 @@ class FileObserver:
     def _add_file(self, name: str, file_id: int):
         """
         Add new entry in dictionary
+
+        Добавить новую запись в словарь
         :param name: File name
         :param file_id: File id
         """
@@ -40,7 +46,9 @@ class FileObserver:
 
     def register_new_file(self, name: str):
         """
-        Create new file with free id
+        Register new file with free id
+
+        Зарегистрировать новый файл со свободным идентификатором
         :param name: File name
         """
         self._add_file(name, self._get_free_id())
@@ -48,6 +56,8 @@ class FileObserver:
     def rename_file(self, old_name: str, new_name: str):
         """
         Rename file
+
+        Переименовать файл
         :param old_name: Old file name
         :param new_name: New File name
         """
@@ -60,14 +70,30 @@ class FileObserver:
     def remove_file(self, name: str):
         """
         Stop to track file
+
+        Остановить отслеживание файла
         :param name: File name
         """
         self._dictionary.pop(name)
 
     def get_id(self, name: str):
+        """
+        Get id from dictionary by name
+
+        Получить идентификатор из словаря по имени
+        :param name: File name
+        :return: Id of file
+        """
         return self._dictionary[name]
 
-    def check_states(self, file: ModifiedFile):
+    def update_states(self, file: ModifiedFile):
+        """
+        Update state of file
+
+        Обновить состояние файла
+        :param file: File
+        :return: None or 1 (if file should be deleted after)
+        """
         if file.old_path is None:
             self.register_new_file(file.new_path)
         elif file.new_path is None:
@@ -82,6 +108,8 @@ class FileObserver:
 class Footprint:
     """
     Structure to store data for analysis
+
+    Структура для хранения данных для анализа
     """
     author = ""
     file = 0
@@ -97,9 +125,12 @@ class Footprint:
     def print(self):
         print(f"{self.author} \t {self.file} \t {self.mistakes} \t {self.commits}")
 
+
 class FileTracker:
     """
     Class that tracks commits and mistakes per file
+
+    Класс, который отслеживает коммиты и ошибки в файле
     """
     _dictionary = None
 
@@ -121,16 +152,33 @@ class FileTracker:
         self._dictionary[username][file_id][1] += 1
 
     def get_print(self, username: str, file_id: int):
+        """
+        Create a Footprint object that represents current state
+
+        Создать объект Footprint, представляющий текущее состояние.
+        :param username: Username
+        :param file_id: File id
+        :return: Footprint (File id, Username, Commits elapsed, Mistakes elapsed)
+        (След (идентификатор файла, имя пользователя, истекшие фиксации, истекшие ошибки))
+        """
         counter = self._dictionary[username][file_id]
         return Footprint(file_id, username, counter[0], counter[1])
 
     def get_dictionary(self):
+        """
+        Get Disctionary file, that's shall be needed in the future to get final states
+
+        Получить файл словаря, который понадобится в будущем для получения конечных состояний
+        :return: dictionary
+        """
         return self._dictionary
 
 
 def get_latest_commit(gr: Git, commits: dict):
     """
     Get the latest commit from the list
+
+    Получить последнюю фиксацию из списка
     :param gr: Git wrapper
     :param commits: {'file': {'commit_hash', ... }}-like dictionary (output of get_commits_last_modified_lines)
     :return: latest commit from the list
@@ -146,7 +194,15 @@ def get_latest_commit(gr: Git, commits: dict):
                 latest_commit = j
     return latest_commit
 
+
 def repo_clone(repo_str: str):
+    """
+    Streamlit wrapper for git
+
+    Обертка для Streamlit для git
+    :param repo_str: repository link
+    :return:
+    """
     st.title('Получение исходного кода')
     st.write("Клонирование репозитория")
     downloading_progress = st.progress(33)
@@ -157,6 +213,13 @@ def repo_clone(repo_str: str):
 
 @st.cache
 def get_dataframe(repo_str):
+    """
+    Repack Footprints objects into the dataframe
+
+    Переупаковать объекты Footprints в dataframe
+    :param repo_str: Repository to compute
+    :return:
+    """
     final_prints, prints, data_observer = git_computation(repo_str)
     df = rapack_prints_into_dataframe(prints)
     df_final = rapack_prints_into_dataframe(final_prints)
@@ -165,6 +228,13 @@ def get_dataframe(repo_str):
 
 
 def rapack_prints_into_dataframe(prints):
+    """
+    Repack one Footprint objects into the dataframe
+
+    Переупаковать один объект Footprint в dataframe
+    :param prints: Footprints to compute
+    :return:
+    """
     authors_pd = []
     files_pd = []
     mistakes_pd = []
@@ -190,6 +260,13 @@ def rapack_prints_into_dataframe(prints):
 
 @st.cache
 def git_computation(repo_str):
+    """
+    Compute Footprints from git repository
+
+    Вычислить Footprints из репозитория git
+    :param repo_str: Repository to compute
+    :return:
+    """
     gr = Git(repo_str)
     repo = Repository(repo_str)
     file_observer = FileObserver()
@@ -199,7 +276,7 @@ def git_computation(repo_str):
     i = 0
     for commit in repo.traverse_commits():
         for file in commit.modified_files:
-            result = file_observer.check_states(file)
+            result = file_observer.update_states(file)
             if file.new_path is None:
                 continue
             file_tracker.new_commit(commit.author.name, file_observer.get_id(file.new_path))
@@ -226,6 +303,14 @@ def git_computation(repo_str):
 
 
 def draw_scatter_plot(df: DataFrame, x_str: str, y_str: str):
+    """
+    Draw a scatter plot from dataframe and calculate correlation coefficients
+
+    Отрисовка точечной диаграммы из фрейма данных и рассчет коэффициентов корреляции
+    :param df: Dataframe
+    :param x_str: x axis
+    :param y_str: y axis
+    """
     plot = px.scatter(df, y=y_str, x=x_str, color="Автор",
                       hover_data=['Автор', "Номера файлов", "Ошибки", 'Общее число комитов', 'Частота ошибки'])
     st.plotly_chart(plot)
@@ -234,7 +319,10 @@ def draw_scatter_plot(df: DataFrame, x_str: str, y_str: str):
 
 def main(repo_str: str):
     """
-    Точка входа
+    Entry point
+
+    Tочка входа
+    :param repo_str: Repository to compute
     """
     if repo_str == "":
         return
@@ -273,7 +361,6 @@ def main(repo_str: str):
     error_chance = 0
     column = df_slice_est['Частота ошибки']
     st.text(f"Вероятность ошибки в файле {column.iat[0]*100}%")
-
 
 
 if __name__ == '__main__':
