@@ -76,7 +76,7 @@ class Footprint:
     mistakes = 0
     commits = 0
 
-    def __init__(self, file, author, mistakes, commits):
+    def __init__(self, file, author, commits, mistakes):
         self.file = file
         self.author = author
         self.mistakes = mistakes
@@ -149,8 +149,8 @@ def main():
         print("Передайте репозиторий первым аргументом")
         return
     """
-    gr = Git("/home/narinai/Downloads/memos")
-    repo = Repository('/home/narinai/Downloads/memos')
+    gr = Git("C:\\Users\\Admin\\memos")
+    repo = Repository('C:\\Users\\Admin\\memos')
     file_observer = FileObserver()
     file_tracker = FileTracker()
     prints = []
