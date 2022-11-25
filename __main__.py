@@ -1,5 +1,14 @@
 import os
+import shutil
 import sys
+from math import log2
+
+import altair as alt
+import plotly_express as px
+
+import pandas as pd
+import streamlit as st
+from pandas import DataFrame
 
 from pydriller import Repository, Git, Commit, ModifiedFile
 import matplotlib.pyplot as plt
@@ -115,12 +124,8 @@ class FileTracker:
         counter = self._dictionary[username][file_id]
         return Footprint(file_id, username, counter[0], counter[1])
 
-    def try_to_make_print(self, username: str, file_id: int):
-        counter = self._dictionary[username][file_id]
-        if (counter[0]) % 1 == 0:
-            return Footprint(file_id, username, counter[0], counter[1])
-        else:
-            return None
+    def get_dictionary(self):
+        return self._dictionary
 
 
 def get_latest_commit(gr: Git, commits: dict):
@@ -141,20 +146,57 @@ def get_latest_commit(gr: Git, commits: dict):
                 latest_commit = j
     return latest_commit
 
+def repo_clone(repo_str: str):
+    st.title('Получение исходного кода')
+    st.write("Клонирование репозитория")
+    downloading_progress = st.progress(33)
+    os.system(f"git clone {repo_str} cloned_repo")
+    downloading_progress.progress(100)
+    return "./cloned_repo"
 
-def main(repo_str: str):
-    """
-    Точка входа
-    """
-    if repo_str.startswith("https://") or repo_str.startswith("git@github.com"):
-        os.system(f"git clone {repo_str} cloned_repo")
-        repo_str = "./cloned_repo"
 
+@st.cache
+def get_dataframe(repo_str):
+    final_prints, prints, data_observer = git_computation(repo_str)
+    df = rapack_prints_into_dataframe(prints)
+    df_final = rapack_prints_into_dataframe(final_prints)
+
+    return df, df_final, data_observer
+
+
+def rapack_prints_into_dataframe(prints):
+    authors_pd = []
+    files_pd = []
+    mistakes_pd = []
+    commits_pd = []
+    percent_pd = []
+    for i in prints:
+        if i.commits == 0:
+            continue
+        authors_pd.append(i.author)
+        files_pd.append(i.file)
+        mistakes_pd.append(i.mistakes)
+        commits_pd.append(i.commits)
+        percent_pd.append(i.mistakes / i.commits)
+    df = pd.DataFrame({
+        'Автор': authors_pd,
+        'Номера файлов': files_pd,
+        'Общее число комитов': commits_pd,
+        'Ошибки': mistakes_pd,
+        'Частота ошибки': percent_pd
+    })
+    return df
+
+
+@st.cache
+def git_computation(repo_str):
     gr = Git(repo_str)
     repo = Repository(repo_str)
     file_observer = FileObserver()
     file_tracker = FileTracker()
+    buggy_commits = []
     prints = []
+    i = 0
     for commit in repo.traverse_commits():
         for file in commit.modified_files:
             result = file_observer.check_states(file)
@@ -163,33 +205,77 @@ def main(repo_str: str):
             file_tracker.new_commit(commit.author.name, file_observer.get_id(file.new_path))
             if "fix" in commit.msg:
                 latest_hash = get_latest_commit(gr, gr.get_commits_last_modified_lines(commit, file))
-                file_tracker.new_mistake(gr.get_commit(latest_hash).author.name, file_observer.get_id(file.new_path))
-            attempt = file_tracker.try_to_make_print(commit.author.name, file_observer.get_id(file.new_path))
-            if attempt is not None:
-                prints.append(attempt)
+                if (latest_hash, file_observer.get_id(file.new_path)) not in buggy_commits:
+                    file_tracker.new_mistake(gr.get_commit(latest_hash).author.name, file_observer.get_id(file.new_path))
+                    buggy_commits.append((latest_hash, file_observer.get_id(file.new_path)))
+            value_to_print = file_tracker.get_print(commit.author.name, file_observer.get_id(file.new_path))
+            if value_to_print.commits > 1:
+                prints.append(value_to_print)
             if result is not None:
                 file_observer.remove_file(file.old_path)
+        i += 1
+    users_files = file_tracker.get_dictionary()
+    final_prints = []
+    for user in users_files:
+        for file in users_files[user]:
+            value_to_print = file_tracker.get_print(user, file)
+            if value_to_print.commits > 1:
+                final_prints.append(value_to_print)
 
-    for i in prints:
-        i.print()
+    return final_prints, prints, file_observer
 
-    x = []
-    y = []
 
-    for i in prints:
-        x.append(i.commits)
-        y.append(i.mistakes)
+def draw_scatter_plot(df: DataFrame, x_str: str, y_str: str):
+    plot = px.scatter(df, y=y_str, x=x_str, color="Автор",
+                      hover_data=['Автор', "Номера файлов", "Ошибки", 'Общее число комитов', 'Частота ошибки'])
+    st.plotly_chart(plot)
+    st.write(df[x_str].corr(df[y_str]))
 
-    plt.plot(x, y, 'ro')
-    #plt.axis([0, 6, 0, 20])
-    plt.show()
+
+def main(repo_str: str):
+    """
+    Точка входа
+    """
+    if repo_str == "":
+        return
+    repo_str = repo_clone(repo_str)
+
+    st.title('Обработка истории коммитов')
+    df, df_final, data_observer = get_dataframe(repo_str)
+    st.write(df)
+
+    draw_scatter_plot(df, 'Общее число комитов', "Ошибки")
+    draw_scatter_plot(df, 'Общее число комитов', 'Частота ошибки')
+    draw_scatter_plot(df, 'Номера файлов', 'Частота ошибки')
+
+    all_authors = set(df["Автор"])
+    selected = st.selectbox("Автор", all_authors, key=42)
+    df_slice = df[df["Автор"] == selected]
+    draw_scatter_plot(df_slice, 'Номера файлов', 'Частота ошибки')
+
+    st.title('Только финальные состояния')
+    st.write(df_final)
+    draw_scatter_plot(df_final, 'Общее число комитов', "Ошибки")
+    draw_scatter_plot(df_final, 'Общее число комитов', 'Частота ошибки')
+    draw_scatter_plot(df_final, 'Номера файлов', 'Частота ошибки')
+
+    all_authors_finals = set(df_final["Автор"])
+    selected_finals = st.selectbox("Автор", all_authors_finals, key=32)
+    df_slice_finals = df_final[df_final["Автор"] == selected_finals]
+    draw_scatter_plot(df_slice_finals, 'Номера файлов', 'Частота ошибки')
+
+    st.title("Оценка вероятности ошибки")
+    all_authors_finals = set(df_final["Автор"])
+    selected_est = st.selectbox("Автор", all_authors_finals, key=22)
+    commited_file_path = st.text_input(label="Путь до файла")
+    df_slice_est = df_final.loc[df_final['Автор'] == selected_est]
+    df_slice_est = df_slice_est.loc[df_slice_est["Номера файлов"] == data_observer.get_id(commited_file_path)]
+    error_chance = 0
+    st.write(f"Вероятность ошибки в файле {df_slice_est}%")
 
 
 if __name__ == '__main__':
-    path = ""
-    if len(sys.argv) != 2:
-        print("Репозиторий не был передан первым аргументом, введите вручную:")
-        path = input()
-    else:
-        path = sys.argv[1]
+    shutil.rmtree("./cloned_repo", True)
+    st.title("Введите адрес репозитория (Локального или удаленного)")
+    path = st.text_input(label="Адрес")
     main(path)
