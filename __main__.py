@@ -1,9 +1,5 @@
 import os
 import shutil
-import sys
-from math import log2
-
-import altair as alt
 import plotly_express as px
 
 import pandas as pd
